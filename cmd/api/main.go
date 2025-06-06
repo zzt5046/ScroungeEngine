@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"scrounge-engine/api"
-
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 )
@@ -12,9 +11,30 @@ import (
 func main() {
 	logrus.SetReportCaller(true)
 
+	fmt.Println("Starting gin...")
 	router := gin.Default()
-	router.GET("/recipe", generateRecipe)
+	router.POST("/recipe", generateRecipe)
+	router.POST("/recipes", generateRecipes)
+	router.Run("localhost:8085")
 
+	printSplash()
+}
+
+func generateRecipe(context *gin.Context) {
+
+	var request api.GenerateRecipeRequest
+	if err := context.BindJSON(&request); err != nil {
+		return
+	}
+
+	context.IndentedJSON(http.StatusOK, NewRecipe(request))
+}
+
+func generateRecipes(context *gin.Context) {
+
+}
+
+func printSplash(){
 	fmt.Println(`
 ________  ________  ________  ________  ___  ___  ________   ________  _______           _______   ________   ________  ___  ________   _______      
 |\   ____\|\   ____\|\   __  \|\   __  \|\  \|\  \|\   ___  \|\   ____\|\  ___ \         |\  ___ \ |\   ___  \|\   ____\|\  \|\   ___  \|\  ___ \     
@@ -26,16 +46,4 @@ ________  ________  ________  ________  ___  ___  ________   ________  _______  
    \|_________|                                                                                                                                       
    
 	`)
-
-	router.Run("localhost:8085")
-}
-
-var recipe = api.Recipe{
-	Name:        "Go Test Recipe",
-	Description: "This is a recipe created when starting Scrounge Engine's API.",
-	Ingredients: []string{"1 tsp flour", "1 lb butter", "1 c patience"},
-}
-
-func generateRecipe(context *gin.Context) {
-	context.IndentedJSON(http.StatusOK, recipe)
 }
