@@ -42,6 +42,7 @@ type Error struct {
 type LlamaRequest struct {
 	Model string `json:"model"`
 	Prompt string `json:"prompt"`
+	Format string `json:"format"`
 	Stream bool `json:"stream"`
 }
 

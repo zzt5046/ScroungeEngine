@@ -4,21 +4,27 @@ import (
 	"fmt"
 	"net/http"
 	"scrounge-engine/api"
+
 	"github.com/gin-gonic/gin"
-	"github.com/sirupsen/logrus"
+	// "github.com/sirupsen/logrus"
 )
 
 func main() {
-	logrus.SetReportCaller(true)
-
-	fmt.Println("Starting gin...")
-	router := gin.Default()
-	router.POST("/recipe", generateRecipe)
-	router.POST("/recipes", generateRecipes)
-	router.Run("localhost:8085")
+	// logrus.SetReportCaller(true)
+	InitLlama()
 
 	printSplash()
+	initRouter()
 }
+
+func initRouter() {
+	fmt.Println("Starting gin...")
+	router := gin.Default()
+	router.POST("/recipes", generateRecipe)
+	router.Run("localhost:8085")
+}
+
+// API Methods ------------------------------------------------
 
 func generateRecipe(context *gin.Context) {
 
@@ -27,14 +33,10 @@ func generateRecipe(context *gin.Context) {
 		return
 	}
 
-	context.IndentedJSON(http.StatusOK, NewRecipe(request))
+	context.IndentedJSON(http.StatusOK, Prompt(request, false))
 }
 
-func generateRecipes(context *gin.Context) {
-
-}
-
-func printSplash(){
+func printSplash() {
 	fmt.Println(`
 ________  ________  ________  ________  ___  ___  ________   ________  _______           _______   ________   ________  ___  ________   _______      
 |\   ____\|\   ____\|\   __  \|\   __  \|\  \|\  \|\   ___  \|\   ____\|\  ___ \         |\  ___ \ |\   ___  \|\   ____\|\  \|\   ___  \|\  ___ \     
