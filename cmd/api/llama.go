@@ -7,77 +7,75 @@ import (
 	"net/http"
 	"os"
 	"scrounge-engine/api"
+	"strings"
 	"time"
 )
 
 var client = &http.Client{
-	Timeout: 10 * time.Second,
+	Timeout: 20 * time.Second,
 }
 var endpoint string = "http://localhost:11434/api/generate"
-var model string = "llama3.1"
-var format string = "json"
-var useStream bool = false
 
 var requestBuffer bytes.Buffer
 
-func InitLlama() {
-	fmt.Println("sending init prompt to Llama...")
-	Prompt(api.GenerateRecipeRequest{}, true)
-}
+func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 
-func Prompt(request api.GenerateRecipeRequest, init bool) api.LlamaResponse {
+	var error bool = false
 
-	var llamaReq api.LlamaRequest
-	if init {
-		// read in init prompt
-		bytes, err := os.ReadFile("init.txt")
-		if err != nil {
-			fmt.Print(err)
-		}
+	// read in init prompt
+	initPromptBytes, err := os.ReadFile("init.txt")
+	if err != nil {
+		fmt.Print(err)
+		error = true
+	}
+	initPrompt := string(initPromptBytes)
 
-		initPrompt := string(bytes) // convert content to a 'string'
-
-		llamaReq = api.LlamaRequest{
-			Model:  model,
-			Prompt: initPrompt,
-			Format: format,
-			Stream: useStream,
-		}
-	} else {
-		llamaReq = convertToLlama(request)
+	// read prompt json from scrounge
+	userPrompt, err := json.Marshal(request)
+	if err != nil {
+		fmt.Println(err)
+		error = true
 	}
 
-	err := json.NewEncoder(&requestBuffer).Encode(llamaReq)
+	// form request to ollama
+	var llamaReq = api.LlamaRequest{
+		Model:  "llama3.1",
+		Prompt: initPrompt + "\n" + string(userPrompt),
+		Format: "json",
+		Stream: false,
+	}
+
+	err = json.NewEncoder(&requestBuffer).Encode(llamaReq)
 	if err != nil {
 		fmt.Println("Error when encoding request")
+		error = true
 	}
 
+	// POST
 	httpResp, err := client.Post(endpoint, "json", &requestBuffer)
 	if err != nil {
-		fmt.Println("error doing llama request: ", err)
+		fmt.Println("Error when posting LlamaRequest")
+		error = true
 	}
 	requestBuffer.Reset()
 	defer httpResp.Body.Close()
 
-	var response api.LlamaResponse
-	if err := json.NewDecoder(httpResp.Body).Decode(&response); err != nil {
-		fmt.Println("Error reading json response: ", err)
-	}
-	return response
-
-}
-
-func convertToLlama(request api.GenerateRecipeRequest) api.LlamaRequest {
-
-	promptJSON, err := json.Marshal(request)
-	if err != nil {
-		fmt.Println(err)
+	// Decode response data
+	var llamaResponse api.LlamaResponse
+	if err := json.NewDecoder(httpResp.Body).Decode(&llamaResponse); err != nil {
+		fmt.Println("Error when reading LlamaResponse", err)
+		error = true
 	}
 
-	return api.LlamaRequest{
-		Model:  model,
-		Prompt: string(promptJSON),
-		Format: format,
-		Stream: useStream,
+	var recipesResponse api.GenerateRecipesResponse
+	if err := json.NewDecoder(strings.NewReader(llamaResponse.Response)).Decode(&recipesResponse); err != nil {
+		fmt.Println("Error reading Recipes from LlamaResponse", err)
+		error = true
+	}
+
+	if error {
+		return api.GenerateRecipesResponse{}
+	} else {
+		return recipesResponse
 	}
 }

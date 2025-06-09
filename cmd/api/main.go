@@ -4,16 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"scrounge-engine/api"
-
 	"github.com/gin-gonic/gin"
-	// "github.com/sirupsen/logrus"
 )
 
 func main() {
-	// logrus.SetReportCaller(true)
-	InitLlama()
-
-	printSplash()
+	fmt.Println("Starting ScroungeEngine...")
 	initRouter()
 }
 
@@ -28,24 +23,23 @@ func initRouter() {
 
 func generateRecipe(context *gin.Context) {
 
-	var request api.GenerateRecipeRequest
+	var request api.GenerateRecipesRequest
 	if err := context.BindJSON(&request); err != nil {
-		return
+		fmt.Println("error serializing request")
 	}
 
-	context.IndentedJSON(http.StatusOK, Prompt(request, false))
-}
+	var response api.GenerateRecipesResponse
+	var code int
+	recipes := Prompt(request).Recipes
+	if recipes != nil {
+		response = api.GenerateRecipesResponse{
+			Recipes: recipes,
+		}
+		code = http.StatusOK
+	} else {
+		response = api.GenerateRecipesResponse{}
+		code = http.StatusInternalServerError
+	}
 
-func printSplash() {
-	fmt.Println(`
-________  ________  ________  ________  ___  ___  ________   ________  _______           _______   ________   ________  ___  ________   _______      
-|\   ____\|\   ____\|\   __  \|\   __  \|\  \|\  \|\   ___  \|\   ____\|\  ___ \         |\  ___ \ |\   ___  \|\   ____\|\  \|\   ___  \|\  ___ \     
-\ \  \___|\ \  \___|\ \  \|\  \ \  \|\  \ \  \\\  \ \  \\ \  \ \  \___|\ \   __/|        \ \   __/|\ \  \\ \  \ \  \___|\ \  \ \  \\ \  \ \   __/|    
- \ \_____  \ \  \    \ \   _  _\ \  \\\  \ \  \\\  \ \  \\ \  \ \  \  __\ \  \_|/__       \ \  \_|/_\ \  \\ \  \ \  \  __\ \  \ \  \\ \  \ \  \_|/__  
-  \|____|\  \ \  \____\ \  \\  \\ \  \\\  \ \  \\\  \ \  \\ \  \ \  \|\  \ \  \_|\ \       \ \  \_|\ \ \  \\ \  \ \  \|\  \ \  \ \  \\ \  \ \  \_|\ \ 
-    ____\_\  \ \_______\ \__\\ _\\ \_______\ \_______\ \__\\ \__\ \_______\ \_______\       \ \_______\ \__\\ \__\ \_______\ \__\ \__\\ \__\ \_______\
-   |\_________\|_______|\|__|\|__|\|_______|\|_______|\|__| \|__|\|_______|\|_______|        \|_______|\|__| \|__|\|_______|\|__|\|__| \|__|\|_______|
-   \|_________|                                                                                                                                       
-   
-	`)
+	context.IndentedJSON(code, response)
 }
