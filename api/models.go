@@ -1,6 +1,5 @@
 package api
 
-
 // REQUESTS TO ENGINE
 
 type GenerateRecipesRequest struct {
@@ -19,7 +18,7 @@ type GenerateRecipesRequest struct {
 // Response when generating multiple recipes
 type GenerateRecipesResponse struct {
 	Recipes []Recipe `json:"recipes"`
-	// LeftoverIngredients []string `json:"leftover_ingredients"`
+	Error   string   `json:"error"`
 }
 
 // REQUESTS TO LLAMA----------------------------------------------------

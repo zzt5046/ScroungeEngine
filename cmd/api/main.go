@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"scrounge-engine/api"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,7 +16,7 @@ func main() {
 func initRouter() {
 	fmt.Println("Starting gin...")
 	router := gin.Default()
-	router.POST("/recipes", generateRecipe)
+	router.POST("/generate-recipe", generateRecipe)
 	router.Run("localhost:8085")
 }
 
@@ -25,6 +26,7 @@ func generateRecipe(context *gin.Context) {
 
 	var request api.GenerateRecipesRequest
 	if err := context.BindJSON(&request); err != nil {
+		fmt.Println(err)
 		fmt.Println("error serializing request")
 	}
 

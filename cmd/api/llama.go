@@ -21,6 +21,7 @@ var requestBuffer bytes.Buffer
 func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 
 	var error bool = false
+	var errorMessage = ""
 
 	// read in init prompt
 	initPromptBytes, err := os.ReadFile("init.txt")
@@ -49,6 +50,7 @@ func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 	if err != nil {
 		fmt.Println("Error when encoding request")
 		error = true
+		errorMessage += err.Error()
 	}
 
 	// POST
@@ -56,6 +58,7 @@ func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 	if err != nil {
 		fmt.Println("Error when posting LlamaRequest")
 		error = true
+		errorMessage += err.Error()
 	}
 	requestBuffer.Reset()
 	defer httpResp.Body.Close()
@@ -65,16 +68,18 @@ func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 	if err := json.NewDecoder(httpResp.Body).Decode(&llamaResponse); err != nil {
 		fmt.Println("Error when reading LlamaResponse", err)
 		error = true
+		errorMessage += err.Error()
 	}
 
 	var recipesResponse api.GenerateRecipesResponse
 	if err := json.NewDecoder(strings.NewReader(llamaResponse.Response)).Decode(&recipesResponse); err != nil {
 		fmt.Println("Error reading Recipes from LlamaResponse", err)
 		error = true
+		errorMessage += err.Error()
 	}
 
 	if error {
-		return api.GenerateRecipesResponse{}
+		return api.GenerateRecipesResponse{Error: errorMessage}
 	} else {
 		return recipesResponse
 	}
