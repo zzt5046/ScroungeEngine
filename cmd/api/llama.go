@@ -23,6 +23,8 @@ func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 	var error bool = false
 	var errorMessage = ""
 
+	fmt.Print(request)
+
 	// read in init prompt
 	initPromptBytes, err := os.ReadFile("init.txt")
 	if err != nil {
@@ -40,7 +42,7 @@ func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
 
 	// form request to ollama
 	var llamaReq = api.LlamaRequest{
-		Model:  "llama3.1",
+		Model:  "gemma:12b",
 		Prompt: initPrompt + "\n" + string(userPrompt),
 		Format: "json",
 		Stream: false,
