@@ -21,29 +21,31 @@ type GenerateRecipesResponse struct {
 	Error   string   `json:"error"`
 }
 
-// REQUESTS TO LLAMA----------------------------------------------------
+// REQUESTS TO LLM----------------------------------------------------
 
-type LlamaRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
-	// Format []byte `json:"format"`
-	Format string `json:"format"`
-	Stream bool   `json:"stream"`
+type LLMMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
-// RESPONSES FROM LLAMA-------------------------------------------------
-
-// General response object from ollama api
-type LlamaResponse struct {
-	Model            string `json:"model"`
-	CreatedTimestamp string `json:"created_at"`
-	Response         string `json:"response"`
-	Done             bool   `json:"done"`
-	DoneReason       string `json:"done_reason"`
-	Context          []int  `json:"context"`
+type LLMRequest struct {
+	Model    string       `json:"model"`
+	Messages []LLMMessage `json:"messages"`
+	Stream   bool         `json:"stream"`
 }
 
-// Structure of generated recipe ("Response" from LlamaResponse)
+// RESPONSES FROM LLM-------------------------------------------------
+
+type LLMChoice struct {
+	Message LLMMessage `json:"message"`
+}
+
+// General response object from llm api
+type LLMResponse struct {
+	Choices []LLMChoice `json:"choices"`
+}
+
+// Structure of generated recipe ("Response" from LLMResponse)
 type Recipe struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`

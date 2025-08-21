@@ -12,77 +12,87 @@ import (
 )
 
 var client = &http.Client{
-	Timeout: 20 * time.Second,
+	Timeout: 30 * time.Second,
 }
-var endpoint string = "http://localhost:11434/api/generate"
 
-var requestBuffer bytes.Buffer
+var endpoint string = "http://localhost:11434/v1/chat/completions"
 
-func Prompt(request api.GenerateRecipesRequest) api.GenerateRecipesResponse {
+func Prompt(request api.GenerateRecipesRequest) (api.GenerateRecipesResponse, error) {
 
-	var error bool = false
-	var errorMessage = ""
+	var requestBuffer bytes.Buffer
 
-	fmt.Print(request)
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
 
 	// read in init prompt
 	initPromptBytes, err := os.ReadFile("init.txt")
 	if err != nil {
-		fmt.Print(err)
-		error = true
+		return api.GenerateRecipesResponse{}, err
 	}
 	initPrompt := string(initPromptBytes)
 
 	// read prompt json from scrounge
 	userPrompt, err := json.Marshal(request)
 	if err != nil {
-		fmt.Println(err)
-		error = true
+		return api.GenerateRecipesResponse{}, err
 	}
 
-	// form request to ollama
-	var llamaReq = api.LlamaRequest{
-		Model:  "gemma:12b",
-		Prompt: initPrompt + "\n" + string(userPrompt),
-		Format: "json",
+	// form request to llm
+	var llmRequest = api.LLMRequest{
+		Model: "google/gemma-3-12b",
+		Messages: []api.LLMMessage{
+			{
+				Role:    "system",
+				Content: string(initPrompt),
+			},
+			{
+				Role:    "user",
+				Content: string(userPrompt),
+			},
+		},
 		Stream: false,
 	}
 
-	err = json.NewEncoder(&requestBuffer).Encode(llamaReq)
+	err = json.NewEncoder(&requestBuffer).Encode(llmRequest)
 	if err != nil {
 		fmt.Println("Error when encoding request")
-		error = true
-		errorMessage += err.Error()
+		return api.GenerateRecipesResponse{}, err
 	}
 
 	// POST
-	httpResp, err := client.Post(endpoint, "json", &requestBuffer)
+	httpResp, err := client.Post(endpoint, "application/json", &requestBuffer)
 	if err != nil {
-		fmt.Println("Error when posting LlamaRequest")
-		error = true
-		errorMessage += err.Error()
+		fmt.Println("Error when posting LLMRequest")
+		return api.GenerateRecipesResponse{}, err
 	}
-	requestBuffer.Reset()
+	responseBody := httpResp.Body
 	defer httpResp.Body.Close()
 
 	// Decode response data
-	var llamaResponse api.LlamaResponse
-	if err := json.NewDecoder(httpResp.Body).Decode(&llamaResponse); err != nil {
-		fmt.Println("Error when reading LlamaResponse", err)
-		error = true
-		errorMessage += err.Error()
+	var llamaResponse api.LLMResponse
+	if err := json.NewDecoder(responseBody).Decode(&llamaResponse); err != nil {
+		fmt.Println("Error when reading LLMResponse", err)
+		return api.GenerateRecipesResponse{}, err
 	}
+
+	recipeJsonString := TrimRecipeJSON(llamaResponse.Choices[0].Message.Content)
 
 	var recipesResponse api.GenerateRecipesResponse
-	if err := json.NewDecoder(strings.NewReader(llamaResponse.Response)).Decode(&recipesResponse); err != nil {
-		fmt.Println("Error reading Recipes from LlamaResponse", err)
-		error = true
-		errorMessage += err.Error()
+	if llamaResponse.Choices[0].Message.Content != "" {
+		if err := json.Unmarshal([]byte(recipeJsonString), &recipesResponse); err != nil {
+			fmt.Println("Error reading Recipes from LLMResponse:", err)
+			return api.GenerateRecipesResponse{}, err
+		}
+	} else {
+		fmt.Println("LLM Response is empty or unexpected format")
+		return api.GenerateRecipesResponse{}, err
 	}
 
-	if error {
-		return api.GenerateRecipesResponse{Error: errorMessage}
-	} else {
-		return recipesResponse
-	}
+	return recipesResponse, nil
+}
+
+func TrimRecipeJSON(in string) string {
+    replacer := strings.NewReplacer("```json\n", "", "\n```", "")
+    return replacer.Replace(in)
 }

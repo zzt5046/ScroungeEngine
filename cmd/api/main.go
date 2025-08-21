@@ -30,18 +30,15 @@ func generateRecipe(context *gin.Context) {
 		fmt.Println("error serializing request")
 	}
 
-	var response api.GenerateRecipesResponse
 	var code int
-	recipes := Prompt(request).Recipes
-	if recipes != nil {
-		response = api.GenerateRecipesResponse{
-			Recipes: recipes,
-		}
+	recipesResponse, err := Prompt(request)
+	if recipesResponse.Recipes != nil {
 		code = http.StatusOK
-	} else {
-		response = api.GenerateRecipesResponse{}
+	} else if err != nil {
+		//(BLACK EYED PEAS) OH SHIT!
 		code = http.StatusInternalServerError
+		fmt.Println(err)
 	}
 
-	context.IndentedJSON(code, response)
+	context.IndentedJSON(code, recipesResponse)
 }
